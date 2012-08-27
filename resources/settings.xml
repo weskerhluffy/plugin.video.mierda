@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+   <category label="Cuenta">
+	<setting id="use-accountmega" type="bool" label="30005" default="false"/>
+	<setting id="usernamemega" type="text" label="30006" default="" enable="!eq(-1,false)"/>
+	<setting id="passwordmega" type="text" label="30007" default="" option="hidden" enable="!eq(-2,false)"/>
+	<setting id="upmega" type="bool" label="30004" default="false"/>
+   </category>
+   <category label="Otras Opciones">
+	<setting id="use-account" type="bool" label="30000" default="false"/>
+	<setting id="username" type="text" label="30001" default="" enable="!eq(-1,false)"/>
+	<setting id="password" type="text" label="30002" default="" option="hidden" enable="!eq(-2,false)"/>
+	<setting id="hide-successful-login-messages" type="bool" label="30003" default="false" enable="!eq(-3,false)"/>
+   </category>
+</settings>
