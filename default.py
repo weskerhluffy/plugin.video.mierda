@@ -4,6 +4,8 @@
 # This addon is licensed with the GNU Public License, and can freely be modified
 # http://www.gnu.org/licenses/gpl-2.0.html
 
+#Info de debug http://wiki.xbmc.org/index.php?title=HOW-TO:Debug_Python_Scripts_with_Eclipse
+
 import urllib,urllib2,re,xbmcplugin,xbmcgui,xbmcaddon
 import weblogin,gethtml,os,zipfile,commands
 from urllib2 import Request, urlopen, URLError, HTTPError
@@ -143,7 +145,7 @@ def busqueda(source):
 
 def CATEGORIES(upmega):
         addDir("Peliculas", "http://movies.humexico.org/xbmc/moviesgen.php", 1, "")
-        addDir("Series", "http://movies.humexico.org/xbmc/seriesgen.php", 1, "")
+        addDir("Caca", "http://movies.humexico.org/xbmc/seriesgen.php", 1, "")
         if porno == "1":
             addDir("Adultos", "http://movies.humexico.org/xbmc/adultosmoviesgen.php", 1, "")
 
