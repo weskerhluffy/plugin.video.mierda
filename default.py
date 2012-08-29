@@ -6,10 +6,11 @@
 
 #Info de debug http://wiki.xbmc.org/index.php?title=HOW-TO:Debug_Python_Scripts_with_Eclipse
 
-import urllib,urllib2,re,xbmcplugin,xbmcgui,xbmcaddon
-import weblogin,gethtml,os,zipfile,commands
+import urllib, urllib2, re, xbmcplugin, xbmcgui, xbmcaddon
+import weblogin, gethtml, os, zipfile, commands
 from urllib2 import Request, urlopen, URLError, HTTPError
-
+import logging
+from HTMLParser import HTMLParser
 
 ############VERSION#############
 
@@ -44,27 +45,27 @@ def getunzipped(theurl, thedir):
   z.close()
   os.unlink(name)
 
-def countdown(time_to_wait,title='',text=''):
-    return do_xbmc_wait(time_to_wait,title,text)
+def countdown(time_to_wait, title='', text=''):
+    return do_xbmc_wait(time_to_wait, title, text)
 
-def do_xbmc_wait(time_to_wait,title,text):
+def do_xbmc_wait(time_to_wait, title, text):
         req = auth(url)
-        print 'esperando '+str(time_to_wait)+' segs'
+        print 'esperando ' + str(time_to_wait) + ' segs'
 
         pDialog = xbmcgui.DialogProgress()
         ret = pDialog.create(title)
 
-        secs=0
-        percent=0
+        secs = 0
+        percent = 0
         increment = 100 / time_to_wait
 
         cancelled = False
         while secs < time_to_wait:
             secs = secs + 1
-            percent = increment*secs
+            percent = increment * secs
             secs_left = str((time_to_wait - secs))
-            remaining_display = ' Espere '+secs_left+' segs descargando video...'
-            pDialog.update(percent,' '+text,remaining_display)
+            remaining_display = ' Espere ' + secs_left + ' segs descargando video...'
+            pDialog.update(percent, ' ' + text, remaining_display)
             xbmc.sleep(1000)
             if (pDialog.iscanceled()):
                  cancelled = True
@@ -84,7 +85,7 @@ def START():
                 conectado = False
                 if os.path.exists(cookiedel):
                         os.remove(cookiedel)
-                return buscar,conectado
+                return buscar, conectado
         elif username != None and password != None:
                 logged_in = weblogin.doLogin(cookiedir, username , password)
                 if logged_in == False:
@@ -92,7 +93,7 @@ def START():
                     dialog.ok(" Opciones avanzadas", "Los parametros incorrectos..")
                 buscar = '<a href="(.+?)" class="download_premium_but"'
                 conectado = True
-                return buscar,conectado
+                return buscar, conectado
 
 def auth(url):
     user = usera
@@ -151,86 +152,130 @@ def CATEGORIES(upmega):
 
 def INDEX(url):
     try:
-        url=url.replace(' ','%20')
+        url = url.replace(' ', '%20')
         modo = setmodo(url)
         req = auth(url)
         req.addheaders = [('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3')]
-        link=req.open(url)
-        link=link.read()
-        match=re.compile('Title: <a href="(.+?)">(.+?)</a> <a href="(.+?)">.+?</a><br>').findall(link)
+        link = req.open(url)
+        link = link.read()
+        match = re.compile('Title: <a href="(.+?)">(.+?)</a> <a href="(.+?)">.+?</a><br>').findall(link)
         for url, name, iconimage in match:
-          url = url+'&user='+usera
-          url = url+'&poster='+iconimage
-          addDir(name,url,modo,iconimage)
+          url = url + '&user=' + usera
+          url = url + '&poster=' + iconimage
+          addDir(name, url, modo, iconimage)
     except URLError, e:
         print e.code
         if e.code == 401:
             dialog = xbmcgui.Dialog()
-            dialog.ok("    Servicio Expirado", "Tu cuenta "+usera+" a vencido, por favor Renueva.")
+            dialog.ok("    Servicio Expirado", "Tu cuenta " + usera + " a vencido, por favor Renueva.")
             print "Tu cuenta esta vencida"    
 
-def VIDEOLINKS(url,name):
+def VIDEOLINKS(url, name):
     try:
-        url=url.replace(' ','%20')
+        url = url.replace(' ', '%20')
         s = url
         list_s = s.split('poster=')
         resultado = '/'.join(list_s[1:])
-        source = gethtml.get(url,usera,passa,cookiedir)
+        source = gethtml.get(url, usera, passa, cookiedir)
         buscar = busqueda(source)
-        match=re.compile(buscar).findall(source)
+        match = re.compile(buscar).findall(source)
         for url in match:
             if "http://dc" in buscar:
-              url = "http://dc"+url
+              url = "http://dc" + url
             else:
               pass
-            addLink(name,url,resultado)
+            addLink(name, url, resultado)
     except URLError, e:
         print e.code
         if e.code == 401:
             dialog = xbmcgui.Dialog()
-            dialog.ok("    Servicio Expirado", "Tu cuenta "+usera+" a vencido, por favor Renueva.")
+            dialog.ok("    Servicio Expirado", "Tu cuenta " + usera + " a vencido, por favor Renueva.")
             print "Tu cuenta esta vencida" 
                 
 def get_params():
-        param=[]
-        paramstring=sys.argv[2]
-        if len(paramstring)>=2:
-                params=sys.argv[2]
-                cleanedparams=params.replace('?','')
-                if (params[len(params)-1]=='/'):
-                        params=params[0:len(params)-2]
-                pairsofparams=cleanedparams.split('&')
-                param={}
+        param = {}
+        paramstring = sys.argv[2]
+        if len(paramstring) >= 2:
+                params = sys.argv[2]
+                cleanedparams = params.replace('?', '')
+                if (params[len(params) - 1] == '/'):
+                        params = params[0:len(params) - 2]
+                pairsofparams = cleanedparams.split('&')
+                param = {}
                 for i in range(len(pairsofparams)):
-                        splitparams={}
-                        splitparams=pairsofparams[i].split('=')
-                        if (len(splitparams))==2:
-                                param[splitparams[0]]=splitparams[1]
+                        splitparams = {}
+                        splitparams = pairsofparams[i].split('=')
+                        if (len(splitparams)) == 2:
+                                param[splitparams[0]] = splitparams[1]
                                 
         return param
 
 
 
-def addLink(name,url,iconimage):
-        ok=True
-        liz=xbmcgui.ListItem("Play", iconImage="DefaultVideo.png", thumbnailImage=iconimage)
-        liz.setInfo( type="Video", infoLabels={ "Title": name } )
+def addLink(name, url, iconimage):
+        ok = True
+        liz = xbmcgui.ListItem("Play", iconImage="DefaultVideo.png", thumbnailImage=iconimage)
+        liz.setInfo(type="Video", infoLabels={ "Title": name })
         liz.setProperty('IsPlayable', 'true')
-        ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=url,listitem=liz)
-        countdown(10,"Espere por Favor","descargando video...")
+        ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=liz)
+        countdown(10, "Espere por Favor", "descargando video...")
         return ok
 
-def addDir(name,url,mode,iconimage):
-        u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)
-        ok=True
-        liz=xbmcgui.ListItem(name, iconImage="DefaultFolder.png", thumbnailImage=iconimage)
-        liz.setInfo( type="Video", infoLabels={ "Title": name } )
-        ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
+def addDir(name, url, mode, iconimage):
+        u = sys.argv[0] + "?url=" + urllib.quote_plus(url) + "&mode=" + str(mode) + "&name=" + urllib.quote_plus(name)
+        ok = True
+        liz = xbmcgui.ListItem(name, iconImage="DefaultFolder.png", thumbnailImage=iconimage)
+        liz.setInfo(type="Video", infoLabels={ "Title": name })
+        ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=u, listitem=liz, isFolder=True)
         return ok
         
+        
+####Clases
 
-REMOTE_DBG = True 
 
+class ParserHTML(HTMLParser):
+    logger = None
+    def __init__(self, fh):
+        """
+        {fh} must be an input stream returned by open() or urllib2.urlopen()
+        """
+        HTMLParser.__init__(self)
+        self.carpetas = {}
+        self.feed(fh.read())
+        logging.basicConfig(level=logging.DEBUG)
+        logger = logging.getLogger("ParserHTML")
+        logger.debug("God bless")
+    def handle_starttag(self, tag, attrs):
+        archivo = ""
+        carpeta = ""
+        if tag == 'a' and attrs and len(attrs) == 1 and len(attrs[0]) == 2 and re.match(r".*S\d{2}E\d{2}.*", attrs[0][1]):
+            logger.debug ("Found link => %s" % attrs[0][1])
+            (carpeta, archivo) = re.sub(r"(.*)(S\d{2}E\d{2}).*", r"\1|\2", attrs[0][1]).split("|")
+            logger.debug("carpeta encontrada %s, archivo %s" % (archivo, carpeta))
+            if not self.carpetas.has_key(carpeta):
+                self.carpetas[carpeta] = {}
+            self.carpetas[carpeta][archivo] = attrs[0][1]
+      
+        
+####Constantes
+REMOTE_DBG = True
+URL_CACA = "http://peliculas.mine.nu:8080/TV-XVID/"
+MODO_CARPETA = 0
+MODO_ARCHIVO = 1
+
+####Variables
+#Inicializadas
+modo = MODO_CARPETA
+params = get_params()
+url_plugin = sys.argv[0]
+handle_xbmc = int(sys.argv[1])
+#Sin inicializar
+lineas_pagina = ()
+logger = None
+opener = None
+pagina = None
+parser_html = None
+carpeta_li = None
 # append pydev remote debugger
 if REMOTE_DBG:
     # Make pydev debugger works for auto reload.
@@ -240,125 +285,38 @@ if REMOTE_DBG:
     # stdoutToServer and stderrToServer redirect stdout and stderr to eclipse console
         pydevd.settrace('localhost', stdoutToServer=True, stderrToServer=True)
     except ImportError:
-        sys.stderr.write("Error: " +
+        sys.stderr.write("Error: " + 
             "You must add org.python.pydev.debug.pysrc to your PYTHONPATH.")
         sys.exit(1)
 
+#Inicializando logger
       
-params=get_params()
-url=None
-name=None
-mode=None
-username=None
-password=None
-upmega=None
-conectado = False
-buscar = ""
-cookiedir="/var/mobile/Library/Preferences/XBMC/addons/plugin.video.megafilms"
-cookiedel = os.path.join(cookiedir,'cookies.lwp')
-upurl = "http://home.humexico.org/upmega.zip"
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger("mierda")
+logger.debug("kussou rumba %s" % params)
 
-folder = os.path.dirname(cookiedir)
-if not os.path.exists(folder):
-  cookiedir=os.getcwd()
-  cookiedel=cookiedir+"\cookies.lwp"
-  print "Detectando que no es un appletv cambiando ruta de cookies"
-  print cookiedir
+if(len(params) > 0 and params["modo"]):
+    modo = int(params["modo"], 0)
+
+#FIXME: Guardar el objeto parser en session
+opener = urllib2.build_opener(urllib2.HTTPHandler(debuglevel=1))
+opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+pagina = opener.open(URL_CACA)
+parser_html = ParserHTML(pagina)
+
+if (modo == MODO_CARPETA):
+
+    
+    for carpeta in parser_html.carpetas:
+         carpeta_li = xbmcgui.ListItem(carpeta.replace(".", " "), iconImage="DefaultFolder.png", thumbnailImage="")
+         carpeta_li.setInfo(type="Video", infoLabels={ "Title": carpeta.replace(".", " ") })
+         xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?carpeta=%s&modo=%d" % (url_plugin, carpeta, MODO_ARCHIVO) , listitem=carpeta_li, isFolder=True)
 else:
-  print "Dejando el cookie path appletv satisfactoriamente detectado"
-  print cookiedir
-
-print "Cookiedel: " + cookiedel
-
-#check if user has enabled use-login setting
-usrsettings = xbmcaddon.Addon(id="plugin.video.megafilms")
-use_account = usrsettings.getSetting('use-account')
-use_accountmega = usrsettings.getSetting('use-accountmega')
-upmega_yes = usrsettings.getSetting('upmega')
-
-if upmega_yes == 'true':
-     upmega = usrsettings.getSetting('upmega')
-
-if use_account == 'true':
-     username = usrsettings.getSetting('username')
-     password = usrsettings.getSetting('password')
-     hidesucces = usrsettings.getSetting('hide-successful-login-messages')
-     ##Eliminar esto para la proxima version##
-     if os.path.exists(cookiedel):
-       os.remove(cookiedel)
-       print "borrando cookies: "+ cookiedel
-     ##Eliminar esto para la proxima version##
-if use_accountmega == 'true':
-     usera = usrsettings.getSetting('usernamemega')
-     passa = usrsettings.getSetting('passwordmega')
-
-############Version y Adultos#################
-f = urllib.urlopen("http://www.megafilms.org/opcio.php?user="+usera)
-adultos = f.read()
-f.close()
-adu = len("adultos=")
-#print "adultos: ",adultos[adu]
-versionscan = adu + len("<br>version=") + 1
-#print "version: ",adultos[versionscan:versionscan+4]
-versioncurrent = adultos[versionscan:versionscan+4]
-cort = versionscan + len("<br>cortesia=") + 1 + 3
-#print "cortesia: ",adultos[cort]
-
-if version >= versioncurrent:
-    print "estamos en la version correcta"
-else:
-    print "no estamos en la version correcta, actualizando.."
-    print "version nueva: " + versioncurrent
-    print os.getcwd()
-    print "Bajando actualizacion.."
-    getunzipped(upurl,cookiedir)
-    dialog = xbmcgui.Dialog()
-    dialog.ok("Version Incorrecta", "Nueva Actualizacion Encontrada - Descargando...\nNueva version: "+versioncurrent+" - Reinicia MegaFilms porfavor.")
-    #xbmc.restart()
-
-porno = adultos[adu]
-cortesia = adultos[cort]
-print porno + " " + version + " " + cortesia
-############Version y Adultos#################
-
-#buscar,conectado=START()
-print "hide: ",upmega
-
-try:
-        url=urllib.unquote_plus(params["url"])
-except:
-        pass
-try:
-        name=urllib.unquote_plus(params["name"])
-except:
-        pass
-try:
-        mode=int(params["mode"])
-except:
-        pass
-
-print "Mode: "+str(mode)
-print "URL: "+str(url)
-print "Name: "+str(name)
-
-if mode==None or url==None or len(url)<1:
-        print ""
-        #print "buscar: ",buscar
-        #print "conectado: ", conectado
-        CATEGORIES(upmega)
-       
-elif mode==1:
-        print ""+url
-        INDEX(url)
-        
-elif mode==2:
-        print ""+url
-        VIDEOLINKS(url,name)
-
-elif mode==3:
-        print "Bajando actualizacion.."
-        getunzipped(upurl,cookiedir)
-        dialog = xbmcgui.Dialog()
-        dialog.ok("Descargando Actualizacion...", "Actualizacion descargada reiniciar MegaFilms")
+    for archivo in parser_html.carpetas[params["carpeta"]]:
+        carpeta_li = xbmcgui.ListItem(archivo, iconImage="DefaultFolder.png", thumbnailImage="")
+        carpeta_li.setInfo(type="Video", infoLabels={ "Title": archivo })
+        logger.debug("La url a la que e hara la peticion es " + URL_CACA + params["carpeta"])
+#        xbmcplugin.addDirectoryItem(handle=handle_xbmc, url=URL_CACA + params["carpeta"] , listitem=carpeta_li, isFolder=False)
+        xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="http://peliculas.mine.nu:8080/TV-XVID/The.Simpsons.S22E17.HDTV.XviD-LOL/Sample/the.simpsons.2217.hdtv-lol-sample.avi" , listitem=carpeta_li, isFolder=False)
 
 xbmcplugin.endOfDirectory(int(sys.argv[1]))
