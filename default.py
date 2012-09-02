@@ -238,7 +238,7 @@ def get_urls_archivos(url_descargas):
 
 ####Constantes
 REMOTE_DBG = False
-URL_CACA = "http://peliculas.mine.nu:8080/TV-XVID/"
+URL_CACA = "http://antros.org.mx/videos/"
 MODO_CARPETA = 0
 MODO_ARCHIVO = 1
 MODO_REPRODUCIR = 2
@@ -332,19 +332,25 @@ else:
     
     
     logger.debug("Modo de reproduccion la url %s" % url_descarga)
-    velocidad_internet = calcular_velocidad_internet()
-    logger.debug("La velocidad de internet es %d" % velocidad_internet)
+#    velocidad_internet = calcular_velocidad_internet()
+#    logger.debug("La velocidad de internet es %d" % velocidad_internet)
     total_a_descargar = calcular_total_a_bajar(url_descarga)
     logger.debug("El total a descargar es %d", total_a_descargar)
     urls_archivos_descargables = get_urls_archivos(url_descarga)
     
-    hilo_dialogo = HiloDialogo(math.ceil(total_a_descargar / velocidad_internet + ((total_a_descargar * 0.1) / velocidad_internet)), "mierda", "caca")
-    hilo_dialogo.start()
+ #   hilo_dialogo = HiloDialogo(math.ceil(total_a_descargar / velocidad_internet + ((total_a_descargar * 0.1) / velocidad_internet)), "mierda", "caca")
+ #   hilo_dialogo.start()
     
     #dialogo_loading(math.ceil(total_a_descargar / velocidad_internet + ((total_a_descargar * 0.1) / velocidad_internet)), "mierda", "caca")
     logger.debug("Empieza la descarga de poder")
     for url_archivo_descargable in urls_archivos_descargables:
-        hilos_archivos_descargables.append(HiloDescarga(url_descarga + url_archivo_descargable))
-        hilos_archivos_descargables[-1].start()
+        logger.debug("die die die my darling %s" % url_archivo_descargable)
+#https://www.assembla.com/wiki/show/oniontv-plugin/Script_to_play_a_video_file_in_XBMC
+        playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
+        playlist.clear()
+        playlist.add(url_descarga + url_archivo_descargable)
+        xbmc.Player().play(playlist)
+#        hilos_archivos_descargables.append(HiloDescarga(url_descarga + url_archivo_descargable))
+#        hilos_archivos_descargables[-1].start()
     
 
