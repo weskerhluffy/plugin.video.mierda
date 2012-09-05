@@ -1,14 +1,16 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.megafilms" version="1.55" name="MegaFilms" provider-name="MegaCoder">
-<requires>
-<import addon="xbmc.python" version="1.00"/>
-</requires>
-<extension point="xbmc.python.pluginsource" library="default.py">
-<provides>video</provides>
-</extension>
-<extension point="xbmc.addon.metadata">
-<summary>MegaFilms</summary>
-<description>Peliculas y Series con audio en Español Latino</description>
-<platform>all</platform>
-</extension>
+<addon id="plugin.video.crapvideo" version="0.1" name="CrapVideo"
+	provider-name="a">
+	<requires>
+		<import addon="xbmc.python" version="1.00" />
+	</requires>
+	<extension point="xbmc.python.pluginsource" library="default.py">
+		<provides>video</provides>
+	</extension>
+	<extension point="xbmc.addon.metadata">
+		<summary>CrapVideo</summary>
+		<description> Series con audio hispano
+		</description>
+		<platform>all</platform>
+	</extension>
 </addon>
