@@ -6,6 +6,11 @@
 
 #Info de debug http://wiki.xbmc.org/index.php?title=HOW-TO:Debug_Python_Scripts_with_Eclipse
 
+#Streams:
+#http://livetvstreaming.ucoz.com/news/ooo_spanish_stream_vlc_ooo/2012-09-01-1815
+#http://blog.felipebarriga.cl/linux/tv-chilena-online-para-linux/
+
+
 import urllib, urllib2, re, xbmcplugin, xbmcgui, xbmcaddon
 import  os, zipfile, commands
 from urllib2 import Request, urlopen, URLError, HTTPError
@@ -26,12 +31,13 @@ version = "0.1"
 
 ####Variables globales
 sys = None
-
+xbmc = None
+logger = None
         
 ####Clases
 
 
-class ParserHTML(HTMLParser):
+class ParserArchivos(HTMLParser):
     logger = None
     def __init__(self, fh):
         """
@@ -41,22 +47,45 @@ class ParserHTML(HTMLParser):
         
         self.carpetas = {}
         logging.basicConfig(level=logging.DEBUG)
-        ParserHTML.logger = logging.getLogger("ParserHTML")
-        ParserHTML.logger.debug("God bless")
+        ParserArchivos.logger = logging.getLogger("ParserArchivos")
+        ParserArchivos.logger.debug("God bless")
         self.feed(fh.read())
 
     def handle_starttag(self, tag, attrs):
         archivo = ""
         carpeta = ""
         if tag == 'a' and attrs and len(attrs) == 1 and len(attrs[0]) == 2 and re.match(r".*S\d{2}E\d{2}.*", attrs[0][1]):
-            ParserHTML.logger.debug("Found link => %s" % attrs[0][1])
+            ParserArchivos.logger.debug("Found link => %s" % attrs[0][1])
             (carpeta, archivo) = re.sub(r"(.*)(S\d{2}E\d{2}).*", r"\1|\2", attrs[0][1]).split("|")
-            ParserHTML.logger.debug("carpeta encontrada %s, archivo %s" % (archivo, carpeta))
+            ParserArchivos.logger.debug("carpeta encontrada %s, archivo %s" % (archivo, carpeta))
             if not self.carpetas.has_key(carpeta):
                 self.carpetas[carpeta] = {}
             self.carpetas[carpeta][archivo] = attrs[0][1]
             
-             
+class ParserFlujos(HTMLParser):
+    logger = None
+    def __init__(self, fh):
+        """
+        {fh} must be an input stream returned by open() or urllib2.urlopen()
+        """
+        HTMLParser.__init__(self)
+        
+        self.carpetas = {}
+        logging.basicConfig(level=logging.DEBUG)
+        ParserArchivos.logger = logging.getLogger("ParserFlujos")
+        self.feed(fh.read())
+
+    def handle_starttag(self, tag, attrs):
+        archivo = ""
+        carpeta = ""
+        if tag == 'a' and attrs and len(attrs) == 1 and len(attrs[0]) == 2 and re.match(r".*S\d{2}E\d{2}.*", attrs[0][1]):
+            ParserArchivos.logger.debug("Found link => %s" % attrs[0][1])
+            (carpeta, archivo) = re.sub(r"(.*)(S\d{2}E\d{2}).*", r"\1|\2", attrs[0][1]).split("|")
+            ParserArchivos.logger.debug("carpeta encontrada %s, archivo %s" % (archivo, carpeta))
+            if not self.carpetas.has_key(carpeta):
+                self.carpetas[carpeta] = {}
+            self.carpetas[carpeta][archivo] = attrs[0][1]
+            
 class HiloDescarga(threading.Thread):  
     logger = None
 
@@ -116,24 +145,30 @@ def get_urls_archivos(url_descargas):
     for linea_pag_descargables in lineas_pag_descargables:
         if ("<tr><td valign=" in linea_pag_descargables and not "DIR" in linea_pag_descargables):
             url_archivo = re.sub(r".*href=\"(.+)\".*</a>.*", r"\1", linea_pag_descargables)
-            logger.debug("La url del archivo es " + url_archivo)
+#            logger.debug("La url del archivo es " + url_archivo)
             urls_archivos.append(url_archivo)
     return urls_archivos
 
 ####Constantes
 REMOTE_DBG = False
 URL_CACA = "http://antros.org.mx/videos/"
-MODO_CARPETA = 0
-MODO_ARCHIVO = 1
-MODO_REPRODUCIR = 2
+MODO_INICIAL = 0
+MODO_CARPETA = 1
+MODO_ARCHIVO = 2
+MODO_LISTA_FLUJO = 3
+MODO_FLUJO = 4
+MODO_ACCESO_ARCHIVO = 5
 
 ####Main
-def fuck (_sys):
+def fuck (_sys, _xbmc):
 ####Variables
 #Inicializadas
     global sys
+    global xbmc
+    global logger
     sys = _sys
-    modo = MODO_CARPETA
+    xbmc = _xbmc
+    modo = MODO_INICIAL
     params = get_params()
     url_plugin = sys.argv[0]
     handle_xbmc = int(sys.argv[1])
@@ -178,12 +213,22 @@ def fuck (_sys):
         modo = int(params["modo"], 0)
     
     
+    if (modo == MODO_INICIAL):
+        carpeta_li = xbmcgui.ListItem("Series", iconImage="DefaultFolder.png", thumbnailImage="")
+        carpeta_li.setInfo(type="Video", infoLabels={ "Title": "Series" })
+        xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?modo=%d" % (url_plugin, MODO_CARPETA) , listitem=carpeta_li, isFolder=True)
+        
+        carpeta_li = xbmcgui.ListItem("Canales", iconImage="DefaultFolder.png", thumbnailImage="")
+        carpeta_li.setInfo(type="Video", infoLabels={ "Title": "Series" })
+        xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?modo=%d" % (url_plugin, MODO_LISTA_FLUJO) , listitem=carpeta_li, isFolder=True)
     
-    if (modo == MODO_CARPETA):
+    
+        xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    elif (modo == MODO_CARPETA):
         opener = urllib2.build_opener(urllib2.HTTPHandler(debuglevel=1))
         opener.addheaders = [('User-agent', 'Mozilla/5.0')]
         pagina = opener.open(URL_CACA)
-        parser_html = ParserHTML(pagina)
+        parser_html = ParserArchivos(pagina)
         
         archivo_persistencia = shelve.open("mierda")
         archivo_persistencia["carpetas"] = parser_html.carpetas
@@ -205,12 +250,12 @@ def fuck (_sys):
             carpeta_li = xbmcgui.ListItem(archivo, iconImage="DefaultFolder.png", thumbnailImage="")
             carpeta_li.setInfo(type="Video", infoLabels={ "Title": archivo })
             logger.debug("La url a la que e hara la peticion es " + URL_CACA + params["carpeta"])
-            xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?carpeta=%s&archivo=%s&modo=%d" % (url_plugin, params["carpeta"] , archivo, MODO_REPRODUCIR) , listitem=carpeta_li, isFolder=False)
+            xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?carpeta=%s&archivo=%s&modo=%d" % (url_plugin, params["carpeta"] , archivo, MODO_ACCESO_ARCHIVO) , listitem=carpeta_li, isFolder=False)
         
         archivo_persistencia.close()
        
         xbmcplugin.endOfDirectory(int(sys.argv[1]))   
-    else:
+    elif (modo == MODO_ACCESO_ARCHIVO):
         archivo_persistencia = shelve.open("mierda")
         carpetas = archivo_persistencia["carpetas"]
         
@@ -234,5 +279,11 @@ def fuck (_sys):
             playlist.clear()
             playlist.add(url_descarga + url_archivo_descargable)
             xbmc.Player().play(playlist)
-    
+    elif (modo == MODO_LISTA_FLUJO):
+        logger.debug("Modo lista de flujos")
+    elif (modo == MODO_FLUJO):
+        logger.debug("Modo   flujo")
+    else:
+        logger.error("Modo desconocido, abortando")
+        sys.exit(1)
 

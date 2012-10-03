@@ -1,4 +1,4 @@
 import crap
 
 
-crap.fuck(sys);
+crap.fuck(sys, xbmc);
