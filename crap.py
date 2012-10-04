@@ -28,12 +28,23 @@ version = "0.1"
 
 ############VERSION#############
 
+####Constantes
+REMOTE_DBG = False
+URL_CACA = "http://antros.org.mx/videos/"
+MODO_INICIAL = 0
+MODO_CARPETA = 1
+MODO_ARCHIVO = 2
+MODO_LISTA_FLUJO = 3
+MODO_FLUJO = 4
+MODO_ACCESO_ARCHIVO = 5
+#FIXME: Obtener nombre automaticamente
+__plugin__ = "plugin.video.crapvideo"
 
 ####Variables globales
 sys = None
 xbmc = None
 logger = None
-        
+addon = None        
 ####Clases
 
 
@@ -64,27 +75,30 @@ class ParserArchivos(HTMLParser):
             
 class ParserFlujos(HTMLParser):
     logger = None
+
     def __init__(self, fh):
         """
         {fh} must be an input stream returned by open() or urllib2.urlopen()
         """
         HTMLParser.__init__(self)
-        
-        self.carpetas = {}
+        self.contenido_li = False
+        self.flujos = []
         logging.basicConfig(level=logging.DEBUG)
         ParserArchivos.logger = logging.getLogger("ParserFlujos")
         self.feed(fh.read())
 
     def handle_starttag(self, tag, attrs):
-        archivo = ""
-        carpeta = ""
-        if tag == 'a' and attrs and len(attrs) == 1 and len(attrs[0]) == 2 and re.match(r".*S\d{2}E\d{2}.*", attrs[0][1]):
-            ParserArchivos.logger.debug("Found link => %s" % attrs[0][1])
-            (carpeta, archivo) = re.sub(r"(.*)(S\d{2}E\d{2}).*", r"\1|\2", attrs[0][1]).split("|")
-            ParserArchivos.logger.debug("carpeta encontrada %s, archivo %s" % (archivo, carpeta))
-            if not self.carpetas.has_key(carpeta):
-                self.carpetas[carpeta] = {}
-            self.carpetas[carpeta][archivo] = attrs[0][1]
+        if tag == 'li':
+            logger.debug("Se encontro una cagada")
+            self.contenido_li = True
+    def handle_endtag(self, tag):
+        if tag == 'li':
+            logger.debug("Se termino una cagada")
+            self.contenido_li = False
+    def handle_data(self, data):
+        if self.contenido_li:
+            logger.debug("El contenido de esta mierda " + data)
+            self.flujos.append(data.split(","))
             
 class HiloDescarga(threading.Thread):  
     logger = None
@@ -149,15 +163,7 @@ def get_urls_archivos(url_descargas):
             urls_archivos.append(url_archivo)
     return urls_archivos
 
-####Constantes
-REMOTE_DBG = False
-URL_CACA = "http://antros.org.mx/videos/"
-MODO_INICIAL = 0
-MODO_CARPETA = 1
-MODO_ARCHIVO = 2
-MODO_LISTA_FLUJO = 3
-MODO_FLUJO = 4
-MODO_ACCESO_ARCHIVO = 5
+
 
 ####Main
 def fuck (_sys, _xbmc):
@@ -166,12 +172,14 @@ def fuck (_sys, _xbmc):
     global sys
     global xbmc
     global logger
+    global addon
     sys = _sys
     xbmc = _xbmc
     modo = MODO_INICIAL
     params = get_params()
     url_plugin = sys.argv[0]
     handle_xbmc = int(sys.argv[1])
+    addon = xbmcaddon.Addon(id=__plugin__)
 
     #Sin inicializar
     velocidad_internet = 0
@@ -187,14 +195,14 @@ def fuck (_sys, _xbmc):
     url_descarga = ""
     carpetas = {}
     
-    # append pydev remote debugger
+    # append pydev remote debuggerm
     if REMOTE_DBG:
         # Make pydev debugger works for auto reload.
         # Note pydevd module need to be copied in XBMC\system\python\Lib\pysrc
         try:
             import pysrc.pydevd as pydevd
         # stdoutToServer and stderrToServer redirect stdout and stderr to eclipse console
-            pydevd.settrace('localhost', stdoutToServer=True, stderrToServer=True)
+            pydevd.settrace('localhost', stdoutToServer=True, stderrToServer=True, port=5678)
         except ImportError:
             sys.stderr.write("Error: " + 
                 "You must add org.python.pydev.debug.pysrc to your PYTHONPATH.")
@@ -204,7 +212,7 @@ def fuck (_sys, _xbmc):
           
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger("mierda")
-    logger.debug("kussou rumba %s" % params)
+ #   logger.debug("kussou rumba %s" % params)
     
     #Configurando el timeout de los socketes
     socket.setdefaulttimeout(60)
@@ -214,17 +222,20 @@ def fuck (_sys, _xbmc):
     
     
     if (modo == MODO_INICIAL):
+        logger.debug("Modo inicial")
         carpeta_li = xbmcgui.ListItem("Series", iconImage="DefaultFolder.png", thumbnailImage="")
         carpeta_li.setInfo(type="Video", infoLabels={ "Title": "Series" })
         xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?modo=%d" % (url_plugin, MODO_CARPETA) , listitem=carpeta_li, isFolder=True)
         
         carpeta_li = xbmcgui.ListItem("Canales", iconImage="DefaultFolder.png", thumbnailImage="")
-        carpeta_li.setInfo(type="Video", infoLabels={ "Title": "Series" })
+        carpeta_li.setInfo(type="Video", infoLabels={ "Title": "Canales" })
         xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?modo=%d" % (url_plugin, MODO_LISTA_FLUJO) , listitem=carpeta_li, isFolder=True)
     
     
         xbmcplugin.endOfDirectory(int(sys.argv[1]))
     elif (modo == MODO_CARPETA):
+        logger.debug("Modo carpeta")
+
         opener = urllib2.build_opener(urllib2.HTTPHandler(debuglevel=1))
         opener.addheaders = [('User-agent', 'Mozilla/5.0')]
         pagina = opener.open(URL_CACA)
@@ -242,6 +253,8 @@ def fuck (_sys, _xbmc):
         xbmcplugin.endOfDirectory(int(sys.argv[1]))
         
     elif (modo == MODO_ARCHIVO):
+        logger.debug("Modo archivo")
+
         archivo_persistencia = shelve.open("mierda")
         carpetas = archivo_persistencia["carpetas"] 
         
@@ -256,6 +269,7 @@ def fuck (_sys, _xbmc):
        
         xbmcplugin.endOfDirectory(int(sys.argv[1]))   
     elif (modo == MODO_ACCESO_ARCHIVO):
+        logger.debug("Modo acceso archivo")
         archivo_persistencia = shelve.open("mierda")
         carpetas = archivo_persistencia["carpetas"]
         
@@ -280,9 +294,27 @@ def fuck (_sys, _xbmc):
             playlist.add(url_descarga + url_archivo_descargable)
             xbmc.Player().play(playlist)
     elif (modo == MODO_LISTA_FLUJO):
-        logger.debug("Modo lista de flujos")
+        logger.debug("Modo lista flujo")
+
+#        logger.debug("Modo lista de flujos %s" % addon.getAddonInfo('path'))
+        
+        parser_html = ParserFlujos(open(addon.getAddonInfo('path') + "/plantillas_html/series.html", "r"))
+        logger.debug("Los flujos encontrados son %s" % parser_html.flujos)
+        
+        for flujo in parser_html.flujos:
+            carpeta_li = xbmcgui.ListItem(flujo[0], iconImage="DefaultFolder.png", thumbnailImage="")
+            carpeta_li.setInfo(type="Video", infoLabels={ "Title": flujo[0] })
+            logger.debug("La url a la que e hara la peticion es " + flujo[1])
+            xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?flujo=%s&modo=%d" % (url_plugin, flujo[1], MODO_FLUJO) , listitem=carpeta_li, isFolder=False)
+        
+        xbmcplugin.endOfDirectory(int(sys.argv[1]))   
+
     elif (modo == MODO_FLUJO):
         logger.debug("Modo   flujo")
+        playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
+        playlist.clear()
+        playlist.add(params["flujo"])
+        xbmc.Player().play(playlist)
     else:
         logger.error("Modo desconocido, abortando")
         sys.exit(1)
