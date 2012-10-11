@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.crapvideo" version="0.1" name="CrapVideo"
+<addon id="plugin.video.crapvideo" version="0.2" name="CrapVideo"
 	provider-name="a">
 	<requires>
 		<import addon="xbmc.python" version="1.00" />
