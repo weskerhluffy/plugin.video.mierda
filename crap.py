@@ -123,7 +123,7 @@ class ParserPelos(HTMLParser):
         if tag == 'a' and attrs and len(attrs) == 1 and len(attrs[0]) == 2 and re.match(r".*\.[12][09][0-9][0-9]\..*", attrs[0][1]):
             ParserPelos.logger.debug("Found link pelo => %s" % attrs[0][1])
             pelo = re.sub(r"(.*)\.[12][09][0-9][0-9]\..*", r"\1", attrs[0][1])
-            ParserPelos.logger.debug("pelo encontrado %s+" % (pelo))
+            ParserPelos.logger.debug("pelo encontrado %s con link %s" % (pelo, attrs[0][1]))
             self.pelos[pelo] = attrs[0][1]
             
 class HiloDescarga(threading.Thread):  
@@ -188,6 +188,16 @@ def get_urls_archivos(url_descargas):
 #            logger.debug("La url del archivo es " + url_archivo)
             urls_archivos.append(url_archivo)
     return urls_archivos
+
+def get_url_pelo(url_descargas):
+    url_archivo = ""
+    lineas_pag_descargables = []
+    lineas_pag_descargables = urllib.urlopen(url_descargas).read().split("\n")
+    for linea_pag_descargables in lineas_pag_descargables:
+        if ("<tr><td valign=" in linea_pag_descargables and "[VID]" in linea_pag_descargables):
+            url_archivo = re.sub(r".*href=\"(.+)\".*</a>.*", r"\1", linea_pag_descargables)
+            logger.debug("La url del archivo es " + url_archivo)
+            return url_archivo
 
 
 
@@ -360,11 +370,22 @@ def fuck (_sys, _xbmc):
         for pelo in parser_html.pelos:
              carpeta_li = xbmcgui.ListItem(pelo.replace(".", " "), iconImage="DefaultFolder.png", thumbnailImage="")
              carpeta_li.setInfo(type="Video", infoLabels={ "Title": pelo.replace(".", " ") })
-             xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?carpeta=%s&modo=%d" % (url_plugin, pelo, MODO_PELO) , listitem=carpeta_li, isFolder=True)
+             xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?carpeta=%s&modo=%d&url_pelo=%s" % (url_plugin, pelo, MODO_PELO, parser_html.pelos[pelo]) , listitem=carpeta_li, isFolder=True)
     
         xbmcplugin.endOfDirectory(int(sys.argv[1]))
     elif (modo == MODO_PELO):
-        logger.debug("Modo pelo")
+        logger.debug("Modo pelo %s" % params["url_pelo"])
+        
+        url_archivo_descargable = get_url_pelo(URL_PELOS + params["url_pelo"])
+        url_archivo_descargable = URL_PELOS + params["url_pelo"] + "/" + url_archivo_descargable
+        
+        logger.debug("die die die my darling %s" % url_archivo_descargable)
+        playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
+        playlist.clear()
+        playlist.add(url_archivo_descargable)
+        xbmc.Player().play(playlist)
+        
+        
     else:
         logger.error("Modo desconocido, abortando")
         sys.exit(1)
