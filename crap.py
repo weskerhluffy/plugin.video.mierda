@@ -31,12 +31,15 @@ version = "0.1"
 ####Constantes
 REMOTE_DBG = False
 URL_CACA = "http://antros.org.mx/videos/"
+URL_PELOS = "http://antros.org.mx/videos/XVID1/"
 MODO_INICIAL = 0
 MODO_CARPETA = 1
 MODO_ARCHIVO = 2
 MODO_LISTA_FLUJO = 3
 MODO_FLUJO = 4
 MODO_ACCESO_ARCHIVO = 5
+MODO_LISTA_PELOS = 6
+MODO_PELO = 7
 #FIXME: Obtener nombre automaticamente
 __plugin__ = "plugin.video.crapvideo"
 
@@ -65,6 +68,7 @@ class ParserArchivos(HTMLParser):
     def handle_starttag(self, tag, attrs):
         archivo = ""
         carpeta = ""
+#FIXME: MAyusculas y minusculas del codigo S#E#
         if tag == 'a' and attrs and len(attrs) == 1 and len(attrs[0]) == 2 and re.match(r".*S\d{2}E\d{2}.*", attrs[0][1]):
             ParserArchivos.logger.debug("Found link => %s" % attrs[0][1])
             (carpeta, archivo) = re.sub(r"(.*)(S\d{2}E\d{2}).*", r"\1|\2", attrs[0][1]).split("|")
@@ -99,6 +103,28 @@ class ParserFlujos(HTMLParser):
         if self.contenido_li:
             logger.debug("El contenido de esta mierda " + data)
             self.flujos.append(data.split(","))
+            
+class ParserPelos(HTMLParser):
+    logger = None
+
+    def __init__(self, fh):
+        """
+        {fh} must be an input stream returned by open() or urllib2.urlopen()
+        """
+        HTMLParser.__init__(self)
+        self.contenido_li = False
+        self.pelos = {}
+        logging.basicConfig(level=logging.DEBUG)
+        ParserPelos.logger = logging.getLogger("ParserPelos")
+        self.feed(fh.read())
+
+    def handle_starttag(self, tag, attrs):
+#TODO: Agregar icono
+        if tag == 'a' and attrs and len(attrs) == 1 and len(attrs[0]) == 2 and re.match(r".*\.[12][09][0-9][0-9]\..*", attrs[0][1]):
+            ParserPelos.logger.debug("Found link pelo => %s" % attrs[0][1])
+            pelo = re.sub(r"(.*)\.[12][09][0-9][0-9]\..*", r"\1", attrs[0][1])
+            ParserPelos.logger.debug("pelo encontrado %s+" % (pelo))
+            self.pelos[pelo] = attrs[0][1]
             
 class HiloDescarga(threading.Thread):  
     logger = None
@@ -230,6 +256,14 @@ def fuck (_sys, _xbmc):
         carpeta_li = xbmcgui.ListItem("Canales", iconImage="DefaultFolder.png", thumbnailImage="")
         carpeta_li.setInfo(type="Video", infoLabels={ "Title": "Canales" })
         xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?modo=%d" % (url_plugin, MODO_LISTA_FLUJO) , listitem=carpeta_li, isFolder=True)
+        
+        carpeta_li = xbmcgui.ListItem("Peliculas", iconImage="DefaultFolder.png", thumbnailImage="")
+        carpeta_li.setInfo(type="Video", infoLabels={ "Title": "Peliculas" })
+        xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?modo=%d" % (url_plugin, MODO_LISTA_PELOS) , listitem=carpeta_li, isFolder=True)
+        
+        carpeta_li = xbmcgui.ListItem("Pagos por evento", iconImage="DefaultFolder.png", thumbnailImage="")
+        carpeta_li.setInfo(type="Video", infoLabels={ "Title": "PPV" })
+        xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?modo=%d" % (url_plugin, MODO_INICIAL) , listitem=carpeta_li, isFolder=True)
     
     
         xbmcplugin.endOfDirectory(int(sys.argv[1]))
@@ -315,6 +349,22 @@ def fuck (_sys, _xbmc):
         playlist.clear()
         playlist.add(params["flujo"])
         xbmc.Player().play(playlist)
+    elif (modo == MODO_LISTA_PELOS):
+        logger.debug("Modo lista pelos")
+        
+        opener = urllib2.build_opener(urllib2.HTTPHandler(debuglevel=1))
+        opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+        pagina = opener.open(URL_PELOS)
+        parser_html = ParserPelos(pagina)
+        
+        for pelo in parser_html.pelos:
+             carpeta_li = xbmcgui.ListItem(pelo.replace(".", " "), iconImage="DefaultFolder.png", thumbnailImage="")
+             carpeta_li.setInfo(type="Video", infoLabels={ "Title": pelo.replace(".", " ") })
+             xbmcplugin.addDirectoryItem(handle=handle_xbmc, url="%s?carpeta=%s&modo=%d" % (url_plugin, pelo, MODO_PELO) , listitem=carpeta_li, isFolder=True)
+    
+        xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    elif (modo == MODO_PELO):
+        logger.debug("Modo pelo")
     else:
         logger.error("Modo desconocido, abortando")
         sys.exit(1)
