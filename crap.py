@@ -149,8 +149,8 @@ class HiloDescarga(threading.Thread):
             try:
                 nombre_archivo = urllib.urlretrieve(self.url_a_bajar)[0]
                 logger.debug("El archivo %s se ha descargado " % nombre_archivo)
-            except IOError as ioe:
-                logger.warn("Hubo un error de conexion %s a %s, reintentando" % (self.url_a_bajar, ioe))
+            except IOError:
+                logger.warn("Hubo un error de conexion %s, reintentando" % (self.url_a_bajar))
             if(nombre_archivo == ""):
                 tiempo_dormir = random.randint(1, 10)
                 logger.warn("El hilo se dormira %d segundos para volver a intentar " % tiempo_dormir)
