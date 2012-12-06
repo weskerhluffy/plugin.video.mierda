@@ -4,3 +4,9 @@ crap.pyc
 *.pyc
 
 nohup.out
+
+crap1.py
+
+*.swp
+
+crap2.py
